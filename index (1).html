@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar Cripto — precio y titulares en vivo</title>
+<meta name="description" content="Radar Cripto: precio en vivo de Bitcoin y Ethereum y titulares que mueven el mercado, actualizados cada 60 segundos.">
+<!-- Open Graph para vista previa en Facebook/WhatsApp. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Radar Cripto — en vivo">
+<meta property="og:description" content="Bitcoin y Ethereum en vivo: precio y titulares que mueven el mercado, cada 60 segundos.">
+<meta property="og:image" content="https://eltallerdigital.github.io/radar-crypto/og-image.jpg">
+<meta property="og:url" content="https://eltallerdigital.github.io/radar-crypto/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#08090a; --carbon:#0f1011; --obsidian:#161718;
+    --graphite:#23252a; --smoke:#383b3f;
+    --ash:#62666d; --fog:#8a8f98; --mist:#d0d6e0; --paper:#ffffff;
+    --lime:#e4f222;
+    --green:#3fb950; --red:#f47070;
+    --green-bg:rgba(39,166,68,.12); --red-bg:rgba(235,87,87,.12);
+    --font:'Inter',ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{background:var(--void);color:var(--mist);font-family:var(--font);
+    font-feature-settings:"cv01" on,"ss03" on,"zero" on;font-size:16px;line-height:1.5;}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px 80px;}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:20;background:rgba(8,9,10,.9);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--graphite);}
+  nav .in{max-width:1000px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;gap:8px;}
+  .logo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:500;color:var(--paper);
+    letter-spacing:-0.01em;margin-right:24px;cursor:default;}
+  .logo .glyph{width:26px;height:26px;border-radius:6px;background:var(--lime);color:#08090a;
+    display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;}
+  .live{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:var(--mono);
+    font-size:10px;letter-spacing:.12em;color:var(--fog);}
+  .live i{width:7px;height:7px;border-radius:50%;background:var(--lime);
+    box-shadow:0 0 8px rgba(228,242,34,.8);animation:blink 2s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* hero */
+  .hero{padding:64px 0 40px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--fog);margin-bottom:16px;}
+  .eyebrow b{color:var(--lime);font-weight:400;}
+  .price{font-size:48px;font-weight:500;color:var(--paper);letter-spacing:-0.022em;line-height:1;}
+  .prices{display:grid;gap:24px;}
+  @media(min-width:640px){.prices{grid-template-columns:1fr 1fr;}}
+  .sym{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--fog);margin-bottom:10px;}
+  .pricerow{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;}
+  .chg{font-family:var(--mono);font-size:13px;padding:4px 12px;border-radius:9999px;
+    background:rgba(255,255,255,.05);border:1px solid var(--graphite);}
+  .chg.up{color:var(--green);border-color:rgba(39,166,68,.4);}
+  .chg.down{color:var(--red);border-color:rgba(235,87,87,.4);}
+  .upd{font-size:13px;color:var(--fog);}
+
+  .disc{border-top:1px solid var(--graphite);border-bottom:1px solid var(--graphite);
+    padding:14px 0;font-size:13px;color:var(--fog);margin-bottom:40px;line-height:1.6;}
+  .disc b{color:var(--mist);font-weight:500;}
+
+  /* titulares en vivo */
+  .news{margin-bottom:48px;}
+  .news .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+  .news .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--paper);}
+  .news .lbl i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lime);
+    margin-right:10px;box-shadow:0 0 8px rgba(228,242,34,.8);animation:blink 2s infinite;}
+  .news .fresh{font-family:var(--mono);font-size:11px;color:var(--fog);}
+  .nfilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+  .nfilters button{background:rgba(255,255,255,.05);color:var(--mist);border:1px solid transparent;
+    border-radius:9999px;padding:6px 14px;font-family:var(--font);font-size:12px;font-weight:400;cursor:pointer;}
+  .nfilters button:hover{color:var(--paper);}
+  .nfilters button.on{color:var(--paper);border-color:var(--lime);}
+  .nfilters button .cnt{font-family:var(--mono);font-size:11px;color:var(--fog);margin-left:4px;}
+  .ncard{display:flex;gap:14px;align-items:flex-start;background:var(--carbon);
+    border:1px solid var(--graphite);border-left:3px solid var(--smoke);
+    border-radius:14px;padding:16px;margin-bottom:12px;
+    transition:transform .15s ease,box-shadow .15s ease;}
+  .ncard:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,.45);}
+  .ncard.bull{border-left-color:var(--green);}
+  .ncard.bear{border-left-color:var(--red);}
+  .ncard img.thumb{width:96px;height:72px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--obsidian);}
+  @media(max-width:520px){.ncard img.thumb{width:72px;height:56px;}}
+  .sent{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:14px;flex-shrink:0;margin-top:2px;}
+  .sent.bull{background:var(--green-bg);color:var(--green);}
+  .sent.bear{background:var(--red-bg);color:var(--red);}
+  .sent.neu{background:rgba(255,255,255,.05);color:var(--fog);}
+  .nbody{min-width:0;flex:1;}
+  .nbody a{font-size:15px;font-weight:500;color:var(--paper);text-decoration:none;line-height:1.45;
+    letter-spacing:-0.005em;display:block;margin-bottom:8px;}
+  .nbody a:hover{color:var(--lime);}
+  .nmeta{display:flex;align-items:center;gap:10px;}
+  .nmeta .t{font-family:var(--mono);font-size:11px;color:var(--ash);}
+  .stag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:2px 8px;border-radius:4px;}
+  .stag.bull{background:var(--green-bg);color:var(--green);}
+  .stag.bear{background:var(--red-bg);color:var(--red);}
+  .stag.neu{background:rgba(255,255,255,.05);color:var(--fog);}
+  .news .src{font-size:12px;color:var(--ash);margin-top:12px;line-height:1.6;}
+  .empty{text-align:center;color:var(--ash);padding:40px;font-size:14px;}
+
+  footer{margin-top:64px;border-top:1px solid var(--graphite);padding-top:24px;
+    font-size:12px;color:var(--ash);line-height:1.8;}
+  footer .mono{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--fog);}
+</style>
+</head>
+<body>
+
+<nav><div class="in">
+  <div class="logo"><span class="glyph">₿</span>Radar Cripto</div>
+  <div class="live"><i></i>EN VIVO</div>
+</div></nav>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">BTC · ETH / USD <b>·</b> COINGECKO <b>·</b> ACTUALIZACIÓN 60S</div>
+    <div class="prices">
+      <div class="pblock">
+        <div class="sym">₿ BITCOIN</div>
+        <div class="price" id="btcPrice">—</div>
+        <div class="pricerow"><span class="chg" id="btcChange">—</span></div>
+      </div>
+      <div class="pblock">
+        <div class="sym">Ξ ETHEREUM</div>
+        <div class="price" id="ethPrice">—</div>
+        <div class="pricerow"><span class="chg" id="ethChange">—</span></div>
+      </div>
+    </div>
+    <div class="pricerow" style="margin-top:14px"><span class="upd" id="btcSub">conectando…</span></div>
+  </div>
+
+  <div class="disc"><b>Nota de instrumento:</b> esto no predice precios ni es consejo financiero. Muestra en vivo lo que está moviendo el mercado — el mercado decide.</div>
+
+  <div class="news">
+    <div class="head">
+      <div class="lbl"><i></i>TITULARES QUE MUEVEN EL PRECIO — EN VIVO</div>
+      <div class="fresh" id="newsFresh">conectando…</div>
+    </div>
+    <div class="nfilters" id="newsFilters">
+      <button data-f="all" class="on">Todos<span class="cnt" id="cAll"></span></button>
+      <button data-f="bull">▲ Alcistas<span class="cnt" id="cBull"></span></button>
+      <button data-f="bear">▼ Bajistas<span class="cnt" id="cBear"></span></button>
+    </div>
+    <div id="newsList"></div>
+    <div class="src">Solo titulares que pueden mover el precio · Fuente: CoinTelegraph · cada 60s · el icono indica el sesgo estimado de cada noticia</div>
+  </div>
+
+  <footer>
+    <div class="mono">FUENTES — COINGECKO · COINTELEGRAPH</div>
+    Precio y titulares en vivo, actualizados cada 60 segundos.<br>
+    Hecho con fines educativos.
+  </footer>
+</div>
+
+<script>
+const FALLBACK = {
+  bitcoin: { usd: 82829, usd_24h_change: 2.20 },
+  ethereum: { usd: 2487.46, usd_24h_change: 2.10 }
+};
+function pintarPrecio(pref, d){
+  document.getElementById(pref + 'Price').textContent =
+    '$' + Math.round(d.usd).toLocaleString('en-US');
+  const c = document.getElementById(pref + 'Change'), ch = d.usd_24h_change || 0;
+  c.textContent = (ch >= 0 ? '▲ +' : '▼ ') + ch.toFixed(2) + '% · 24H';
+  c.className = 'chg ' + (ch >= 0 ? 'up' : 'down');
+}
+async function precio(){
+  let d = FALLBACK, vivo = false;
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+    if (r.ok) { const j = await r.json(); if (j.bitcoin && j.ethereum) { d = j; vivo = true; } }
+  } catch(e){}
+  pintarPrecio('btc', d.bitcoin);
+  pintarPrecio('eth', d.ethereum);
+  document.getElementById('btcSub').textContent = vivo
+    ? 'En vivo · CoinGecko'
+    : 'Sin conexión — referencia del 9-oct-2026';
+}
+precio(); setInterval(precio, 60000);
+
+// --- titulares en vivo (cada 60s) ---
+const NEWS_URL = 'https://api.rss2json.com/v1/api.json?rss_url=' +
+  encodeURIComponent('https://cointelegraph.com/rss');
+function haceTxt(iso){
+  const d = new Date(iso.replace(' ', 'T') + 'Z').getTime();
+  if (isNaN(d)) return '';
+  const m = Math.max(0, Math.round((Date.now() - d) / 60000));
+  if (m < 1) return 'ahora';
+  if (m < 60) return 'hace ' + m + ' min';
+  const h = Math.floor(m / 60);
+  if (h < 24) return 'hace ' + h + ' h';
+  return 'hace ' + Math.floor(h / 24) + ' d';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// Solo noticias que pueden mover el precio: macro, regulación, política,
+// guerra, mercado y colapsos. El resto se descarta.
+const PRICE_KEYS = /fed|rate cut|rate hike|interest rate|inflation|cpi\b|powell|warsh|dollar|recession|\bsec\b|etfs?\b|ban\b|lawsuit|sued|regulat|senate|bill\b|tax\b|trump|milei|election|govern|war\b|attack|iran|missile|sanction|liquidation|crash|plunge|surge|rally|record high|all-time high|ath\b|breakout|sell-?off|hack|exploit|collapse|bankrupt|halv|quantum|ethereum|\bether\b|vitalik|staking|gas fee/i;
+// Sesgo estimado de cada titular por palabras clave.
+const BULL_KEYS = /surge|rally|soars?|jumps?|\bgains?\b|record high|all-time high|\bath\b|breakout|approv|adopt|inflows?|accumulat|bullish|institutional|reserve|halving|upgrade|rate cut|dovish|truce|ceasefire|backs?\b|embrace|launch/i;
+const BEAR_KEYS = /crash|plunge|dumps?|slump|tumbles?|\bfalls?\b|\bdrops?\b|declines?|sheds?|outflows?|hack|exploit|breach|collapse|bankrupt|fraud|scam|lawsuit|sued|ban\b|banned|restrict|attacks?|missile|war\b|sanctions?|liquidat|sell-?off|fear|warns?|warning|rate hike|hawkish|tensions?|incident|tax\b|probe|investigat/i;
+function sentimiento(t){
+  const a = (t.match(BULL_KEYS) || []).length;
+  const b = (t.match(BEAR_KEYS) || []).length;
+  if (b > a) return 'bear';
+  if (a > b) return 'bull';
+  return 'neu';
+}
+const SENT_TXT = { bull:'ALCISTA', bear:'BAJISTA', neu:'NEUTRO' };
+const SENT_ICON = { bull:'▲', bear:'▼', neu:'●' };
+let newsItems = [], newsFilter = 'all';
+function cardHTML(it){
+  const s = it.sent;
+  const img = (it.enclosure && it.enclosure.link)
+    ? '<img class="thumb" loading="lazy" src="' + esc(it.enclosure.link) + '" onerror="this.remove()" alt="">'
+    : '';
+  return '<div class="ncard ' + s + '">' + img +
+    '<div class="sent ' + s + '" title="' + SENT_TXT[s] + '">' + SENT_ICON[s] + '</div>' +
+    '<div class="nbody"><a href="' + esc(it.link || '#') + '" target="_blank" rel="noopener">' +
+    esc(it.title || '') + '</a>' +
+    '<div class="nmeta"><span class="t">' + esc(haceTxt(it.pubDate || '')) + '</span>' +
+    '<span class="stag ' + s + '">' + SENT_TXT[s] + '</span></div></div></div>';
+}
+function renderNews(){
+  const items = newsItems.filter(it => newsFilter === 'all' || it.sent === newsFilter);
+  document.getElementById('cAll').textContent = ' (' + newsItems.length + ')';
+  document.getElementById('cBull').textContent = ' (' + newsItems.filter(i => i.sent === 'bull').length + ')';
+  document.getElementById('cBear').textContent = ' (' + newsItems.filter(i => i.sent === 'bear').length + ')';
+  document.getElementById('newsList').innerHTML = items.length
+    ? items.map(cardHTML).join('')
+    : '<div class="empty">Sin titulares ' +
+      (newsFilter === 'bull' ? 'alcistas' : newsFilter === 'bear' ? 'bajistas' : '') +
+      ' ahora mismo.</div>';
+}
+document.querySelectorAll('#newsFilters button').forEach(b => b.onclick = () => {
+  newsFilter = b.dataset.f;
+  document.querySelectorAll('#newsFilters button').forEach(x => x.classList.toggle('on', x === b));
+  renderNews();
+});
+async function noticias(){
+  try {
+    const r = await fetch(NEWS_URL);
+    if (!r.ok) throw 0;
+    const j = await r.json();
+    if (j.status !== 'ok' || !j.items) throw 0;
+    const rel = j.items.filter(it => PRICE_KEYS.test(it.title || ''));
+    newsItems = rel.slice(0, 10).map(it => ({ enclosure: it.enclosure, link: it.link,
+      title: it.title, pubDate: it.pubDate, sent: sentimiento(it.title || '') }));
+    renderNews();
+    const h = new Date();
+    document.getElementById('newsFresh').textContent = 'ACTUALIZADO ' +
+      String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0') + ':' +
+      String(h.getSeconds()).padStart(2,'0');
+  } catch(e){
+    document.getElementById('newsFresh').textContent = 'SIN CONEXIÓN — reintentando…';
+  }
+}
+noticias(); setInterval(noticias, 60000);
+</script>
+</body>
+</html>
