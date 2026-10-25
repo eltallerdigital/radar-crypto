@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar Cripto — precio y titulares en vivo</title>
-<meta name="description" content="Radar Cripto: precio en vivo de Bitcoin y Ethereum y titulares que mueven el mercado, actualizados cada 60 segundos.">
+<meta name="description" content="Radar Cripto: precio en vivo de Bitcoin, Ethereum, USDT, USDC, BNB y Solana, y titulares que mueven el mercado, actualizados cada 60 segundos.">
 <!-- Open Graph para vista previa en Facebook/WhatsApp. -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="Radar Cripto — en vivo">
-<meta property="og:description" content="Bitcoin y Ethereum en vivo: precio y titulares que mueven el mercado, cada 60 segundos.">
+<meta property="og:description" content="Bitcoin, Ethereum, USDT, USDC, BNB y Solana en vivo: precio y titulares que mueven el mercado, cada 60 segundos.">
 <meta property="og:image" content="https://eltallerdigital.github.io/radar-crypto/og-image.jpg">
 <meta property="og:url" content="https://eltallerdigital.github.io/radar-crypto/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +50,7 @@
   .price{font-size:48px;font-weight:500;color:var(--paper);letter-spacing:-0.022em;line-height:1;}
   .prices{display:grid;gap:24px;}
   @media(min-width:640px){.prices{grid-template-columns:1fr 1fr;}}
+  @media(min-width:900px){.prices{grid-template-columns:1fr 1fr 1fr;}}
   .sym{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--fog);margin-bottom:10px;}
   .pricerow{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;}
   .chg{font-family:var(--mono);font-size:13px;padding:4px 12px;border-radius:9999px;
@@ -118,7 +119,7 @@
 
 <div class="wrap">
   <div class="hero">
-    <div class="eyebrow">BTC · ETH / USD <b>·</b> COINGECKO <b>·</b> ACTUALIZACIÓN 60S</div>
+    <div class="eyebrow">BTC · ETH · USDT · USDC · BNB · SOL / USD <b>·</b> COINGECKO <b>·</b> ACTUALIZACIÓN 60S</div>
     <div class="prices">
       <div class="pblock">
         <div class="sym">₿ BITCOIN</div>
@@ -129,6 +130,26 @@
         <div class="sym">Ξ ETHEREUM</div>
         <div class="price" id="ethPrice">—</div>
         <div class="pricerow"><span class="chg" id="ethChange">—</span></div>
+      </div>
+      <div class="pblock">
+        <div class="sym">₮ USDT</div>
+        <div class="price" id="usdtPrice">—</div>
+        <div class="pricerow"><span class="chg" id="usdtChange">—</span></div>
+      </div>
+      <div class="pblock">
+        <div class="sym">$ USDC</div>
+        <div class="price" id="usdcPrice">—</div>
+        <div class="pricerow"><span class="chg" id="usdcChange">—</span></div>
+      </div>
+      <div class="pblock">
+        <div class="sym">BNB</div>
+        <div class="price" id="bnbPrice">—</div>
+        <div class="pricerow"><span class="chg" id="bnbChange">—</span></div>
+      </div>
+      <div class="pblock">
+        <div class="sym">◎ SOLANA</div>
+        <div class="price" id="solPrice">—</div>
+        <div class="pricerow"><span class="chg" id="solChange">—</span></div>
       </div>
     </div>
     <div class="pricerow" style="margin-top:14px"><span class="upd" id="btcSub">conectando…</span></div>
@@ -162,21 +183,32 @@ const FALLBACK = {
   bitcoin: { usd: 82829, usd_24h_change: 2.20 },
   ethereum: { usd: 2487.46, usd_24h_change: 2.10 }
 };
-function pintarPrecio(pref, d){
-  document.getElementById(pref + 'Price').textContent =
-    '$' + Math.round(d.usd).toLocaleString('en-US');
-  const c = document.getElementById(pref + 'Change'), ch = d.usd_24h_change || 0;
+const COINS = [
+  { id: 'bitcoin', pref: 'btc' },
+  { id: 'ethereum', pref: 'eth' },
+  { id: 'tether', pref: 'usdt', dec: 4 },
+  { id: 'usd-coin', pref: 'usdc', dec: 4 },
+  { id: 'binancecoin', pref: 'bnb' },
+  { id: 'solana', pref: 'sol' }
+];
+function pintarPrecio(pref, d, dec){
+  const p = document.getElementById(pref + 'Price');
+  const c = document.getElementById(pref + 'Change');
+  if (!d) { p.textContent = '—'; c.textContent = '—'; c.className = 'chg'; return; }
+  p.textContent = '$' + (dec ? d.usd.toFixed(dec)
+    : Math.round(d.usd).toLocaleString('en-US'));
+  const ch = d.usd_24h_change || 0;
   c.textContent = (ch >= 0 ? '▲ +' : '▼ ') + ch.toFixed(2) + '% · 24H';
   c.className = 'chg ' + (ch >= 0 ? 'up' : 'down');
 }
 async function precio(){
   let d = FALLBACK, vivo = false;
   try {
-    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=' +
+      COINS.map(c => c.id).join(',') + '&vs_currencies=usd&include_24hr_change=true');
     if (r.ok) { const j = await r.json(); if (j.bitcoin && j.ethereum) { d = j; vivo = true; } }
   } catch(e){}
-  pintarPrecio('btc', d.bitcoin);
-  pintarPrecio('eth', d.ethereum);
+  COINS.forEach(c => pintarPrecio(c.pref, d[c.id], c.dec));
   document.getElementById('btcSub').textContent = vivo
     ? 'En vivo · CoinGecko'
     : 'Sin conexión — referencia del 9-oct-2026';
@@ -204,7 +236,7 @@ function haceTxt(iso){
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 // Solo noticias que pueden mover el precio: macro, regulación, política,
 // guerra, mercado y colapsos. El resto se descarta.
-const PRICE_KEYS = /fed|rate cut|rate hike|interest rate|inflation|cpi\b|powell|warsh|dollar|recession|\bsec\b|etfs?\b|ban\b|lawsuit|sued|regulat|senate|bill\b|tax\b|trump|milei|election|govern|war\b|attack|iran|missile|sanction|liquidation|crash|plunge|surge|rally|record high|all-time high|ath\b|breakout|sell-?off|hack|exploit|collapse|bankrupt|halv|quantum|ethereum|\bether\b|vitalik|staking|gas fee/i;
+const PRICE_KEYS = /fed|rate cut|rate hike|interest rate|inflation|cpi\b|powell|warsh|dollar|recession|\bsec\b|etfs?\b|ban\b|lawsuit|sued|regulat|senate|bill\b|tax\b|trump|milei|election|govern|war\b|attack|iran|missile|sanction|liquidation|crash|plunge|surge|rally|record high|all-time high|ath\b|breakout|sell-?off|hack|exploit|collapse|bankrupt|halv|quantum|ethereum|\bether\b|vitalik|staking|gas fee|solana|bnb|binance|tether|usdt|usdc/i;
 // Sesgo estimado de cada titular por palabras clave.
 const BULL_KEYS = /surge|rally|soars?|jumps?|\bgains?\b|record high|all-time high|\bath\b|breakout|approv|adopt|inflows?|accumulat|bullish|institutional|reserve|halving|upgrade|rate cut|dovish|truce|ceasefire|backs?\b|embrace|launch/i;
 const BEAR_KEYS = /crash|plunge|dumps?|slump|tumbles?|\bfalls?\b|\bdrops?\b|declines?|sheds?|outflows?|hack|exploit|breach|collapse|bankrupt|fraud|scam|lawsuit|sued|ban\b|banned|restrict|attacks?|missile|war\b|sanctions?|liquidat|sell-?off|fear|warns?|warning|rate hike|hawkish|tensions?|incident|tax\b|probe|investigat/i;
