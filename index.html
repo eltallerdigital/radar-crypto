@@ -99,6 +99,8 @@
   .stag.bull{background:var(--green-bg);color:var(--green);}
   .stag.bear{background:var(--red-bg);color:var(--red);}
   .stag.neu{background:rgba(255,255,255,.05);color:var(--fog);}
+  .ssrc{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--fog);
+    border:1px solid var(--graphite);padding:2px 6px;border-radius:4px;white-space:nowrap;}
   .news .src{font-size:12px;color:var(--ash);margin-top:12px;line-height:1.6;}
   .empty{text-align:center;color:var(--ash);padding:40px;font-size:14px;}
 
@@ -145,11 +147,11 @@
       <button data-f="bear">▼ Bajistas<span class="cnt" id="cBear"></span></button>
     </div>
     <div id="newsList"></div>
-    <div class="src">Solo titulares que pueden mover el precio · Fuente: CoinTelegraph · cada 60s · el icono indica el sesgo estimado de cada noticia</div>
+    <div class="src">Solo titulares que pueden mover el precio · Fuentes: CoinTelegraph, CoinDesk y CoinMarketCap · cada 60s · el icono indica el sesgo estimado de cada noticia</div>
   </div>
 
   <footer>
-    <div class="mono">FUENTES — COINGECKO · COINTELEGRAPH</div>
+    <div class="mono">FUENTES — COINGECKO · COINTELEGRAPH · COINDESK · COINMARKETCAP</div>
     Precio y titulares en vivo, actualizados cada 60 segundos.<br>
     Hecho con fines educativos.
   </footer>
@@ -182,10 +184,15 @@ async function precio(){
 precio(); setInterval(precio, 60000);
 
 // --- titulares en vivo (cada 60s) ---
+const RSS_URL = 'https://cointelegraph.com/rss';
 const NEWS_URL = 'https://api.rss2json.com/v1/api.json?rss_url=' +
-  encodeURIComponent('https://cointelegraph.com/rss');
+  encodeURIComponent(RSS_URL);
 function haceTxt(iso){
-  const d = new Date(iso.replace(' ', 'T') + 'Z').getTime();
+  let d = NaN;
+  if (iso) {
+    d = new Date(iso.replace(' ', 'T') + 'Z').getTime();
+    if (isNaN(d)) d = new Date(iso).getTime();
+  }
   if (isNaN(d)) return '';
   const m = Math.max(0, Math.round((Date.now() - d) / 60000));
   if (m < 1) return 'ahora';
@@ -213,15 +220,16 @@ const SENT_ICON = { bull:'▲', bear:'▼', neu:'●' };
 let newsItems = [], newsFilter = 'all';
 function cardHTML(it){
   const s = it.sent;
-  const img = (it.enclosure && it.enclosure.link)
-    ? '<img class="thumb" loading="lazy" src="' + esc(it.enclosure.link) + '" onerror="this.remove()" alt="">'
+  const img = it.thumb
+    ? '<img class="thumb" loading="lazy" src="' + esc(it.thumb) + '" onerror="this.remove()" alt="">'
     : '';
   return '<div class="ncard ' + s + '">' + img +
     '<div class="sent ' + s + '" title="' + SENT_TXT[s] + '">' + SENT_ICON[s] + '</div>' +
     '<div class="nbody"><a href="' + esc(it.link || '#') + '" target="_blank" rel="noopener">' +
     esc(it.title || '') + '</a>' +
     '<div class="nmeta"><span class="t">' + esc(haceTxt(it.pubDate || '')) + '</span>' +
-    '<span class="stag ' + s + '">' + SENT_TXT[s] + '</span></div></div></div>';
+    '<span class="stag ' + s + '">' + SENT_TXT[s] + '</span>' +
+    (it.source ? '<span class="ssrc">' + esc(it.source.toUpperCase()) + '</span>' : '') + '</div></div></div>';
 }
 function renderNews(){
   const items = newsItems.filter(it => newsFilter === 'all' || it.sent === newsFilter);
@@ -239,23 +247,123 @@ document.querySelectorAll('#newsFilters button').forEach(b => b.onclick = () => 
   document.querySelectorAll('#newsFilters button').forEach(x => x.classList.toggle('on', x === b));
   renderNews();
 });
-async function noticias(){
+// Lee el RSS de CoinTelegraph en formato XML (para las fuentes alternativas).
+function parseRss(xml){
   try {
-    const r = await fetch(NEWS_URL);
-    if (!r.ok) throw 0;
-    const j = await r.json();
-    if (j.status !== 'ok' || !j.items) throw 0;
-    const rel = j.items.filter(it => PRICE_KEYS.test(it.title || ''));
-    newsItems = rel.slice(0, 10).map(it => ({ enclosure: it.enclosure, link: it.link,
-      title: it.title, pubDate: it.pubDate, sent: sentimiento(it.title || '') }));
-    renderNews();
-    const h = new Date();
-    document.getElementById('newsFresh').textContent = 'ACTUALIZADO ' +
-      String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0') + ':' +
-      String(h.getSeconds()).padStart(2,'0');
-  } catch(e){
-    document.getElementById('newsFresh').textContent = 'SIN CONEXIÓN — reintentando…';
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    if (doc.querySelector('parsererror')) return [];
+    const out = [];
+    doc.querySelectorAll('item').forEach(it => {
+      const txt = tag => { const el = it.querySelector(tag); return el ? el.textContent.trim() : ''; };
+      const enc = it.querySelector('enclosure');
+      const med = it.getElementsByTagName('media:content')[0];
+      const thm = it.getElementsByTagName('media:thumbnail')[0];
+      const thumb = (enc && enc.getAttribute('url')) ||
+        (med && med.getAttribute('url')) ||
+        (thm && thm.getAttribute('url')) || '';
+      const title = txt('title');
+      if (title) out.push({ title, link: txt('link'), pubDate: txt('pubDate'), thumb });
+    });
+    return out;
+  } catch(e){ return []; }
+}
+async function fetchJson(url){
+  const r = await fetch(url);
+  if (!r.ok) throw 0;
+  return r.json();
+}
+async function fetchText(url){
+  const r = await fetch(url);
+  if (!r.ok) throw 0;
+  return r.text();
+}
+// Intenta varias rutas para un mismo RSS y devuelve los items con su fuente.
+async function rssVia(urls, source){
+  for (const u of urls) {
+    try {
+      if (u.indexOf('/get?') !== -1) {
+        const j = await fetchJson(u);
+        const items = parseRss(j.contents || '').map(it => ({ ...it, source }));
+        if (items.length) return items;
+      } else if (u.indexOf('rss2json') !== -1) {
+        const j = await fetchJson(u);
+        if (j.status === 'ok' && j.items) {
+          const items = j.items.map(it => ({
+            title: it.title || '', link: it.link || '', pubDate: it.pubDate || '',
+            thumb: (it.enclosure && it.enclosure.link) || '', source
+          })).filter(i => i.title);
+          if (items.length) return items;
+        }
+      } else {
+        const items = parseRss(await fetchText(u)).map(it => ({ ...it, source }));
+        if (items.length) return items;
+      }
+    } catch(e){}
   }
+  return [];
+}
+// Titulares de CoinMarketCap (API pública, sin clave).
+async function cmcItems(){
+  const api = 'https://api.coinmarketcap.com/content/v3/news?page=1&size=20';
+  const parse = j => {
+    const arr = (j && j.data) || [];
+    return arr.map(a => {
+      const m = a.meta || {};
+      return { title: m.title || '', link: m.sourceUrl || '',
+        pubDate: m.releasedAt || m.createdAt || '', thumb: a.cover || '',
+        source: 'CoinMarketCap' };
+    }).filter(i => i.title);
+  };
+  try {
+    const items = parse(await fetchJson(api));
+    if (items.length) return items;
+  } catch(e){}
+  try {
+    const items = parse(JSON.parse(await fetchText(
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(api))));
+    if (items.length) return items;
+  } catch(e){}
+  return [];
+}
+// Junta las tres fuentes, quita duplicados y ordena por fecha.
+async function fetchItems(){
+  const CD_RSS = 'https://www.coindesk.com/arc/outboundfeeds/rss/';
+  const results = await Promise.allSettled([
+    rssVia([NEWS_URL,
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS_URL),
+      'https://api.allorigins.win/get?url=' + encodeURIComponent(RSS_URL)
+    ], 'CoinTelegraph'),
+    rssVia([
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(CD_RSS),
+      'https://api.allorigins.win/get?url=' + encodeURIComponent(CD_RSS)
+    ], 'CoinDesk'),
+    cmcItems()
+  ]);
+  const all = [];
+  for (const r of results) if (r.status === 'fulfilled') all.push(...r.value);
+  const seen = new Set(), out = [];
+  for (const it of all) {
+    const k = it.title.trim().toLowerCase();
+    if (!seen.has(k)) { seen.add(k); out.push(it); }
+  }
+  out.sort((a, b) => (Date.parse(b.pubDate || '') || 0) - (Date.parse(a.pubDate || '') || 0));
+  return out.length ? out : null;
+}
+async function noticias(){
+  const items = await fetchItems();
+  if (!items) {
+    document.getElementById('newsFresh').textContent = 'SIN CONEXIÓN — reintentando…';
+    return;
+  }
+  const rel = items.filter(it => PRICE_KEYS.test(it.title || ''));
+  newsItems = rel.slice(0, 10).map(it => ({ title: it.title, link: it.link,
+    pubDate: it.pubDate, thumb: it.thumb, source: it.source,
+    sent: sentimiento(it.title || '') }));
+  renderNews();
+  const h = new Date();
+  document.getElementById('newsFresh').textContent = 'ACTUALIZADO ' +
+    String(h.getHours()).padStart(2,'0') + ':' + String(h.getMinutes()).padStart(2,'0') + ':' +
+    String(h.getSeconds()).padStart(2,'0');
 }
 noticias(); setInterval(noticias, 60000);
 </script>
